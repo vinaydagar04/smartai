@@ -8,7 +8,7 @@ export async function updateUser(data) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
-  const user = await db.user.findUnique({
+  const user = await db.User.findUnique({
     where: {
       clerkUserId: userId,
     },
@@ -32,39 +32,38 @@ export async function updateUser(data) {
               industry: data.industry,
               salaryRanges: [], // Default empty array
               growthRate: 0, // Default value
-              DemandLevel: "Medium", // Default value
+              demandLevel: "MEDIUM", // Default value
               topSkills: [], // Default empty array
-              marketOutlook: "Neutral", //Default value
+              marketOutlook: "NEUTRAL", //Default value
               keyTrends: [], //Defaults empty array
               recommendedSkills: [], // Default empty array
-              nextUpdate: newDate(DataTransfer.now() + 7 * 24 * 60 * 60 * 1000), // 1 week from now
+              nextUpdate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1 week from now
             },
           });
-
-          // update the user
-
-          const updateUser = await tx.user.update({
-            where: {
-              id: user.id,
-            },
-            data: {
-              industry: data.industry,
-              experience: data.experience,
-              bio: data.bio,
-              skills: data.skills,
-            },
-          });
-          return { updateUser, industryInsight };
         }
+        // update the user
+
+        const updateUser = await tx.user.update({
+          where: {
+            id: user.id,
+          },
+          data: {
+            industry: data.industry,
+            experience: data.experience,
+            bio: data.bio,
+            skills: data.skills,
+          },
+        });
+        return { updateUser, industryInsight };
       },
       {
         timeout: 10000, // default:5000
       }
     );
-    return result.user;
+    return { success: true, ...result };
   } catch (error) {
     console.error("Error updating user and industry:", error.message);
-    throw new Error("Failed to update profile");
+    throw new Error("Failed to update profile" + error.message);
   }
 }
 
