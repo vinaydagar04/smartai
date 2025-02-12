@@ -1,7 +1,7 @@
 import React from "react";
 
-const InterviewPage = () => {
+const page = () => {
   return <div></div>;
 };
 
-export default InterviewPage;
+export default page;
