@@ -1,5 +1,5 @@
 "use client";
-import generateQuiz, { saveQuizResult } from "@/actions/interview";
+import { generateQuiz, saveQuizResult } from "@/actions/interview";
 import { Button } from "@/components/ui/button";
 import {
   Card,

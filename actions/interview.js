@@ -7,7 +7,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-const generateQuiz = async () => {
+export async function generateQuiz() {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
@@ -55,7 +55,7 @@ const generateQuiz = async () => {
     console.error("Error generating quiz:", error);
     throw new Error("Failed to generate quiz questions");
   }
-};
+}
 
 export async function saveQuizResult(questions, answers, score) {
   const { userId } = await auth();
@@ -127,5 +127,27 @@ export async function saveQuizResult(questions, answers, score) {
     throw new Error("Failed to save quiz result");
   }
 }
+export async function getAssessments() {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
 
-export default generateQuiz;
+  const user = await db.user.findUnique({
+    where: { clerkUserId: userId },
+  });
+  if (!user) throw new Error("User not found");
+
+  try {
+    const assessments = await db.assessment.findMany({
+      where: {
+        userId: user.id,
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+    return assessments;
+  } catch (error) {
+    console.error("Error fetching assessments:", error);
+    throw new Error("Failed to fetch assessments");
+  }
+}
