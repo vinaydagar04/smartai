@@ -1,6 +1,13 @@
+// app/resume/_components/entry-form.jsx
 "use client";
-import { entrySchema } from "@/app/lib/schema";
+
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { format, parse } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
   CardContent,
@@ -8,13 +15,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { PlusCircle } from "lucide-react";
-import React, { useState } from "react";
-import { useForm } from "react-hook-form";
+import { entrySchema } from "@/app/lib/schema";
+import { Sparkles, PlusCircle, X, Pencil, Save, Loader2 } from "lucide-react";
+import { improveWithAI } from "@/actions/resume";
+import { toast } from "sonner";
+import useFetch from "@/hooks/use-fetch";
 
-const EntryForm = ({ type, entries, onChange }) => {
+const formatDisplayDate = (dateString) => {
+  if (!dateString) return "";
+  const date = parse(dateString, "yyyy-MM", new Date());
+  return format(date, "MMM yyyy");
+};
+
+export function EntryForm({ type, entries, onChange }) {
   const [isAdding, setIsAdding] = useState(false);
 
   const {
@@ -37,8 +50,89 @@ const EntryForm = ({ type, entries, onChange }) => {
   });
 
   const current = watch("current");
+
+  const handleAdd = handleValidation((data) => {
+    const formattedEntry = {
+      ...data,
+      startDate: formatDisplayDate(data.startDate),
+      endDate: data.current ? "" : formatDisplayDate(data.endDate),
+    };
+
+    onChange([...entries, formattedEntry]);
+
+    reset();
+    setIsAdding(false);
+  });
+
+  const handleDelete = (index) => {
+    const newEntries = entries.filter((_, i) => i !== index);
+    onChange(newEntries);
+  };
+
+  const {
+    loading: isImproving,
+    fn: improveWithAIFn,
+    data: improvedContent,
+    error: improveError,
+  } = useFetch(improveWithAI);
+
+  // Add this effect to handle the improvement result
+  useEffect(() => {
+    if (improvedContent && !isImproving) {
+      setValue("description", improvedContent);
+      toast.success("Description improved successfully!");
+    }
+    if (improveError) {
+      toast.error(improveError.message || "Failed to improve description");
+    }
+  }, [improvedContent, improveError, isImproving, setValue]);
+
+  // Replace handleImproveDescription with this
+  const handleImproveDescription = async () => {
+    const description = watch("description");
+    if (!description) {
+      toast.error("Please enter a description first");
+      return;
+    }
+
+    await improveWithAIFn({
+      current: description,
+      type: type.toLowerCase(), // 'experience', 'education', or 'project'
+    });
+  };
+
   return (
-    <div>
+    <div className="space-y-4">
+      <div className="space-y-4">
+        {entries.map((item, index) => (
+          <Card key={index}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                {item.title} @ {item.organization}
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="icon"
+                type="button"
+                onClick={() => handleDelete(index)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                {item.current
+                  ? `${item.startDate} - Present`
+                  : `${item.startDate} - ${item.endDate}`}
+              </p>
+              <p className="mt-2 text-sm whitespace-pre-wrap">
+                {item.description}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
       {isAdding && (
         <Card>
           <CardHeader>
@@ -112,12 +206,59 @@ const EntryForm = ({ type, entries, onChange }) => {
               />
               <label htmlFor="current">Current {type}</label>
             </div>
+
+            <div className="space-y-2">
+              <Textarea
+                placeholder={`Description of your ${type.toLowerCase()}`}
+                className="h-32"
+                {...register("description")}
+                error={errors.description}
+              />
+              {errors.description && (
+                <p className="text-sm text-red-500">
+                  {errors.description.message}
+                </p>
+              )}
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleImproveDescription}
+              disabled={isImproving || !watch("description")}
+            >
+              {isImproving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Improving...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Improve with AI
+                </>
+              )}
+            </Button>
           </CardContent>
-          <CardFooter>
-            <p>Card Footer</p>
+          <CardFooter className="flex justify-end space-x-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                reset();
+                setIsAdding(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleAdd}>
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Add Entry
+            </Button>
           </CardFooter>
         </Card>
       )}
+
       {!isAdding && (
         <Button
           className="w-full"
@@ -130,6 +271,4 @@ const EntryForm = ({ type, entries, onChange }) => {
       )}
     </div>
   );
-};
-
-export default EntryForm;
+}
