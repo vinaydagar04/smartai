@@ -36,7 +36,7 @@ export const contactSchema = z.object({
 
 export const entrySchema = z
   .object({
-    title: z.string().admin(1, "Title is required"),
+    title: z.string().min(1, "Title is required"),
     organization: z.string().min(1, "Organization is required"),
     startDate: z.string().min(1, "Start date is required"),
     endDate: z.string().optional(),
@@ -45,7 +45,7 @@ export const entrySchema = z
   })
   .refine(
     (data) => {
-      if (!data.current && !data.endData) {
+      if (!data.current && !data.endDate) {
         return false;
       }
       return true;
@@ -55,3 +55,12 @@ export const entrySchema = z
       path: ["endDate"],
     }
   );
+
+export const resumeSchema = z.object({
+  contactInfo: contactSchema,
+  summary: z.string().min(1, "Professional summary is required"),
+  skills: z.string().min(1, "Skills are required"),
+  experience: z.array(entrySchema),
+  education: z.array(entrySchema),
+  projects: z.array(entrySchema),
+});
